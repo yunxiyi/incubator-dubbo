@@ -5,10 +5,8 @@ import com.netflix.appinfo.EurekaInstanceConfig;
 import com.netflix.appinfo.HealthCheckHandler;
 import com.netflix.appinfo.InstanceInfo;
 import com.netflix.discovery.DiscoveryClient;
-import com.netflix.discovery.EurekaEventListener;
 import org.apache.dubbo.config.RegistryConfig;
 import org.apache.dubbo.config.spring.beans.factory.annotation.ReferenceAnnotationBeanPostProcessor;
-import org.apache.dubbo.registry.eureka.EurekaRegistry;
 import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -16,6 +14,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.SearchStrategy;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.netflix.eureka.EurekaClientAutoConfiguration;
+import org.springframework.cloud.netflix.eureka.EurekaClientConfigBean;
 import org.springframework.cloud.netflix.eureka.InstanceInfoFactory;
 import org.springframework.cloud.netflix.eureka.config.EurekaClientConfigServerAutoConfiguration;
 import org.springframework.cloud.netflix.eureka.config.EurekaDiscoveryClientConfigServiceAutoConfiguration;
@@ -31,7 +30,7 @@ import java.net.URL;
  * @date 2018/7/21
  */
 @Configuration
-@EnableConfigurationProperties({DubboEurekaClientConfig.class, DubboEurekaInstance.class})
+@EnableConfigurationProperties({EurekaClientConfigBean.class, DubboEurekaInstance.class})
 @ConditionalOnProperty(value = "eureka.client.enabled", matchIfMissing = true)
 @AutoConfigureBefore({EurekaClientAutoConfiguration.class, EurekaClientConfigServerAutoConfiguration.class,
         RibbonEurekaAutoConfiguration.class, EurekaDiscoveryClientConfigServiceAutoConfiguration.class})
@@ -62,7 +61,7 @@ public class DubboEurekaConfiguration {
 
 
     @Bean
-    public DubboDiscoveryClient eurekaClient(ApplicationInfoManager applicationInfoManager, DubboEurekaClientConfig config,
+    public DubboDiscoveryClient eurekaClient(ApplicationInfoManager applicationInfoManager, EurekaClientConfigBean config,
                                              DiscoveryClient.DiscoveryClientOptionalArgs optionalArgs,
                                              HealthCheckHandler healthCheckHandler) {
         return new DubboDiscoveryClient(applicationInfoManager, config, optionalArgs, healthCheckHandler);
@@ -81,10 +80,10 @@ public class DubboEurekaConfiguration {
     }
 
     @Bean("eurekaRegistryConfig")
-    public RegistryConfig registryConfig(DubboEurekaClientConfig dubboEurekaClientConfig) {
+    public RegistryConfig registryConfig(EurekaClientConfigBean eurekaClientConfigBean) {
         String address;
         try {
-            String defaultZone = dubboEurekaClientConfig.getServiceUrl().get("defaultZone");
+            String defaultZone = eurekaClientConfigBean.getServiceUrl().get("defaultZone");
             URL eurekaUrl = new URL(defaultZone);
             address = "eureka://" + eurekaUrl.getAuthority();
         } catch (MalformedURLException e) {
