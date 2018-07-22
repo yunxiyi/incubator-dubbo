@@ -3,11 +3,8 @@ package org.apache.dubbo.registry.eureka.configuration;
 import com.netflix.appinfo.ApplicationInfoManager;
 import com.netflix.appinfo.HealthCheckHandler;
 import com.netflix.appinfo.InstanceInfo;
-import com.netflix.discovery.CacheRefreshedEvent;
 import com.netflix.discovery.DiscoveryClient;
 import com.netflix.discovery.EurekaClientConfig;
-import com.netflix.discovery.EurekaEvent;
-import com.netflix.discovery.EurekaEventListener;
 import com.netflix.discovery.shared.Application;
 import com.netflix.discovery.shared.transport.EurekaHttpClient;
 import org.apache.dubbo.common.URL;
@@ -15,7 +12,6 @@ import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.common.utils.CollectionUtils;
 import org.apache.dubbo.common.utils.StringUtils;
-import org.apache.dubbo.registry.eureka.EurekaRegistry;
 import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Field;
@@ -35,10 +31,6 @@ public class DubboDiscoveryClient extends DiscoveryClient {
 
     private Field eurekaTransportField;
 
-    private EurekaRegistry eurekaRegistry;
-
-    private DubboCacheEurekaEventListener eurekaEventListener;
-
     private AtomicReference<EurekaHttpClient> eurekaHttpClient = new AtomicReference<>();
 
 
@@ -46,16 +38,12 @@ public class DubboDiscoveryClient extends DiscoveryClient {
                                 DiscoveryClientOptionalArgs args, HealthCheckHandler healthCheckHandler) {
         super(applicationInfoManager, config, args);
         registerHealthCheck(healthCheckHandler);
-
-        //listener refresh registry event
-        eurekaEventListener = new DubboCacheEurekaEventListener(this);
-        registerEventListener(eurekaEventListener);
         eurekaTransportField = ReflectionUtils.findField(DiscoveryClient.class, "eurekaTransport");
         ReflectionUtils.makeAccessible(this.eurekaTransportField);
     }
 
 
-   private EurekaHttpClient getEurekaHttpClient() {
+    private EurekaHttpClient getEurekaHttpClient() {
         if (this.eurekaHttpClient.get() == null) {
             try {
                 Object eurekaTransport = this.eurekaTransportField.get(this);
@@ -79,16 +67,6 @@ public class DubboDiscoveryClient extends DiscoveryClient {
         getEurekaHttpClient().register(info);
     }
 
-
-    /**
-     * this method use to callback when local cache updated
-     *
-     * @param eurekaRegistry callback object
-     */
-    public void setEurekaRegistry(EurekaRegistry eurekaRegistry) {
-        this.eurekaRegistry = eurekaRegistry;
-    }
-
     /**
      * query registered service by subscribed key
      *
@@ -103,14 +81,6 @@ public class DubboDiscoveryClient extends DiscoveryClient {
             urls.addAll(findService(subscribedService, instances));
         }
         return urls;
-    }
-
-    /**
-     * {@link EurekaRegistry#doNotify()}
-     * dynamic update registry info
-     */
-    void notifyEurekaRegistry() {
-        eurekaRegistry.doNotify();
     }
 
     private Set<URL> findService(String subscribedService, List<InstanceInfo> instances) {
@@ -128,23 +98,5 @@ public class DubboDiscoveryClient extends DiscoveryClient {
             }
         }
         return result;
-    }
-
-    static class DubboCacheEurekaEventListener implements EurekaEventListener {
-
-        DubboDiscoveryClient discoveryClient;
-
-        DubboCacheEurekaEventListener(DubboDiscoveryClient discoveryClient) {
-            this.discoveryClient = discoveryClient;
-        }
-
-        @Override
-        public void onEvent(EurekaEvent event) {
-            if (event.getClass() == CacheRefreshedEvent.class) {
-                // if need, dynamic refresh registry info
-                discoveryClient.notifyEurekaRegistry();
-            }
-        }
-
     }
 }

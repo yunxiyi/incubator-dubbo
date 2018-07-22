@@ -18,6 +18,9 @@ package org.apache.dubbo.registry.eureka;
 
 import com.netflix.appinfo.ApplicationInfoManager;
 import com.netflix.appinfo.InstanceInfo;
+import com.netflix.discovery.CacheRefreshedEvent;
+import com.netflix.discovery.EurekaEvent;
+import com.netflix.discovery.EurekaEventListener;
 import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
@@ -41,7 +44,7 @@ import java.util.Set;
  *
  * @author yunxiyi
  */
-public class EurekaRegistry extends FailbackRegistry {
+public class EurekaRegistry extends FailbackRegistry implements EurekaEventListener {
 
     private final static Logger logger = LoggerFactory.getLogger(EurekaRegistry.class);
 
@@ -53,7 +56,7 @@ public class EurekaRegistry extends FailbackRegistry {
         super(url);
         discoveryClient = SpringContextHandler.getBean(DubboDiscoveryClient.class);
         applicationInfoManager = SpringContextHandler.getBean(ApplicationInfoManager.class);
-        discoveryClient.setEurekaRegistry(this);
+        discoveryClient.registerEventListener(this);
     }
 
     @Override
@@ -97,7 +100,43 @@ public class EurekaRegistry extends FailbackRegistry {
         }
     }
 
-    public void updateServiceUrl(final URL url, final NotifyListener nl, List<URL> urls) {
+    @Override
+    protected void doUnsubscribe(URL url, NotifyListener listener) {
+
+    }
+
+    private String toKey(URL url) {
+        String serviceInterface = url.getServiceInterface();
+        String group = url.getParameter(Constants.GROUP_KEY);
+        StringBuffer key = new StringBuffer();
+
+        if (!StringUtils.isBlank(group)) {
+            key.append(group).append(".");
+        }
+        key.append(serviceInterface);
+        return key.toString();
+    }
+
+    @Override
+    public void onEvent(EurekaEvent event) {
+        if (event.getClass() == CacheRefreshedEvent.class) {
+            // if need, dynamic refresh registry info
+            doNotify();
+        }
+    }
+
+    private void doNotify() {
+        Map<URL, Set<NotifyListener>> subscribed = getSubscribed();
+        for (Map.Entry<URL, Set<NotifyListener>> subscribe : subscribed.entrySet()) {
+            Set<NotifyListener> listeners = subscribe.getValue();
+            for (NotifyListener nl : listeners) {
+                List<URL> serviceUrls = discoveryClient.query(toKey(subscribe.getKey()));
+                updateServiceUrl(subscribe.getKey(), nl, serviceUrls);
+            }
+        }
+    }
+
+    private void updateServiceUrl(final URL url, final NotifyListener nl, List<URL> urls) {
         // there will be update
         Map<String, List<URL>> serviceUrls = getNotified().get(url);
         List<URL> result = new ArrayList<>();
@@ -117,33 +156,4 @@ public class EurekaRegistry extends FailbackRegistry {
             notify(url, nl, result);
         }
     }
-
-    public void doNotify() {
-        Map<URL, Set<NotifyListener>> subscribed = getSubscribed();
-        for (Map.Entry<URL, Set<NotifyListener>> subscribe : subscribed.entrySet()) {
-            Set<NotifyListener> listeners = subscribe.getValue();
-            for (NotifyListener nl : listeners) {
-                List<URL> serviceUrls = discoveryClient.query(toKey(subscribe.getKey()));
-                updateServiceUrl(subscribe.getKey(), nl, serviceUrls);
-            }
-        }
-    }
-
-    @Override
-    protected void doUnsubscribe(URL url, NotifyListener listener) {
-
-    }
-
-    public String toKey(URL url) {
-        String serviceInterface = url.getServiceInterface();
-        String group = url.getParameter(Constants.GROUP_KEY);
-        StringBuffer key = new StringBuffer();
-
-        if (!StringUtils.isBlank(group)) {
-            key.append(group).append(".");
-        }
-        key.append(serviceInterface);
-        return key.toString();
-    }
-
 }
