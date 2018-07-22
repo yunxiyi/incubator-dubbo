@@ -107,7 +107,7 @@ public class EurekaRegistry extends FailbackRegistry implements EurekaEventListe
     private String toKey(URL url) {
         String serviceInterface = url.getServiceInterface();
         String group = url.getParameter(Constants.GROUP_KEY);
-        StringBuffer key = new StringBuffer();
+        StringBuilder key = new StringBuilder();
 
         if (!StringUtils.isBlank(group)) {
             key.append(group).append(".");
