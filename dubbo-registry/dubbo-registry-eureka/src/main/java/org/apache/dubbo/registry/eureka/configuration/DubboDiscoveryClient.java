@@ -77,7 +77,10 @@ public class DubboDiscoveryClient extends DiscoveryClient {
         List<Application> registeredApplications = getApplications().getRegisteredApplications();
         List<URL> urls = new ArrayList<>();
         for (Application application : registeredApplications) {
-            List<InstanceInfo> instances = application.getInstancesAsIsFromEureka();
+            List<InstanceInfo> instances = application.getInstances();
+            if (CollectionUtils.isEmpty(instances)) {
+                instances = application.getInstancesAsIsFromEureka();
+            }
             urls.addAll(findService(subscribedService, instances));
         }
         return urls;

@@ -77,7 +77,7 @@ public class EurekaRegistry extends FailbackRegistry implements EurekaEventListe
         }
 
         InstanceInfo instanceInfo = applicationInfoManager.getInfo();
-        if (Constants.PROVIDER.equals(url.getProtocol())) {
+        if (Constants.PROVIDER.equals(url.getParameter(Constants.SIDE_KEY))) {
             instanceInfo.getMetadata().put(toKey(url), url.toFullString());
         }
         discoveryClient.register(instanceInfo);
@@ -90,8 +90,7 @@ public class EurekaRegistry extends FailbackRegistry implements EurekaEventListe
 
     @Override
     protected void doSubscribe(final URL url, final NotifyListener listener) {
-        discoveryClient.query(toKey(url));
-        List<URL> urls = new ArrayList<>();
+        List<URL> urls = discoveryClient.query(toKey(url));
         if (CollectionUtils.isEmpty(urls)) {
             return;
         }
