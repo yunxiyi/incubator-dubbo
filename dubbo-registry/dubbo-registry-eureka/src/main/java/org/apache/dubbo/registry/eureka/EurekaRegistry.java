@@ -121,22 +121,22 @@ public class EurekaRegistry extends FailbackRegistry implements EurekaEventListe
     public void onEvent(EurekaEvent event) {
         if (event.getClass() == CacheRefreshedEvent.class) {
             // if need, dynamic refresh registry info
-            doNotify();
+            notifySubscriber();
         }
     }
 
-    private void doNotify() {
+    private void notifySubscriber() {
         Map<URL, Set<NotifyListener>> subscribed = getSubscribed();
         for (Map.Entry<URL, Set<NotifyListener>> subscribe : subscribed.entrySet()) {
             Set<NotifyListener> listeners = subscribe.getValue();
             for (NotifyListener nl : listeners) {
                 List<URL> serviceUrls = discoveryClient.query(toKey(subscribe.getKey()));
-                updateServiceUrl(subscribe.getKey(), nl, serviceUrls);
+                doNotifySubscriber(subscribe.getKey(), nl, serviceUrls);
             }
         }
     }
 
-    private void updateServiceUrl(final URL url, final NotifyListener nl, List<URL> urls) {
+    private void doNotifySubscriber(final URL url, final NotifyListener nl, List<URL> urls) {
         // there will be update
         Map<String, List<URL>> serviceUrls = getNotified().get(url);
         List<URL> result = new ArrayList<>();
