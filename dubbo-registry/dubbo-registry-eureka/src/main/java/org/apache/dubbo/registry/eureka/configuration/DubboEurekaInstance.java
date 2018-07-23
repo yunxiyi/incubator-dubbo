@@ -12,22 +12,23 @@ import javax.annotation.PostConstruct;
  * @author yunxiyi
  * @date 2018/7/21
  */
-@ConfigurationProperties(prefix = "eureka.instance")
-public class DubboEurekaInstance extends EurekaInstanceConfigBean {
+public class DubboEurekaInstance {
 
     private static final String UNKNOWN = "unknown";
 
-    public DubboEurekaInstance(InetUtils inetUtils) {
-        super(inetUtils);
+    EurekaInstanceConfigBean configBean;
+
+    public DubboEurekaInstance(EurekaInstanceConfigBean configBean) {
+        this.configBean = configBean;
     }
 
     @PostConstruct
     public void init() {
-        String appname = getAppname();
-        if (StringUtils.isBlank(appname) || UNKNOWN.equals(appname)) {
+        String appName = configBean.getAppname();
+        if (StringUtils.isBlank(appName) || UNKNOWN.equals(appName)) {
             ApplicationConfig application = SpringContextHandler.getBean(ApplicationConfig.class);
             if (application != null && StringUtils.isNotEmpty(application.getName())) {
-                setAppname(application.getName());
+                configBean.setAppname(application.getName());
             }
         }
     }

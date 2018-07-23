@@ -18,9 +18,8 @@ package org.apache.dubbo.registry.eureka;
 
 import com.netflix.appinfo.ApplicationInfoManager;
 import com.netflix.appinfo.InstanceInfo;
-import com.netflix.discovery.CacheRefreshedEvent;
-import com.netflix.discovery.EurekaEvent;
-import com.netflix.discovery.EurekaEventListener;
+import java.util.Arrays;
+import java.util.List;
 import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
@@ -31,19 +30,16 @@ import org.apache.dubbo.registry.NotifyListener;
 import org.apache.dubbo.registry.eureka.configuration.DubboDiscoveryClient;
 import org.apache.dubbo.registry.eureka.configuration.SpringContextHandler;
 import org.apache.dubbo.registry.support.FailbackRegistry;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import org.springframework.cloud.client.discovery.event.HeartbeatEvent;
+import org.springframework.context.ApplicationListener;
 
 /**
  * EurekaRegistry
  *
  * @author yunxiyi
  */
-public class EurekaRegistry extends FailbackRegistry implements EurekaEventListener {
+public class EurekaRegistry extends FailbackRegistry implements
+        ApplicationListener<HeartbeatEvent> {
 
     private final static Logger logger = LoggerFactory.getLogger(EurekaRegistry.class);
 
@@ -55,12 +51,12 @@ public class EurekaRegistry extends FailbackRegistry implements EurekaEventListe
         super(url);
         discoveryClient = SpringContextHandler.getBean(DubboDiscoveryClient.class);
         applicationInfoManager = SpringContextHandler.getBean(ApplicationInfoManager.class);
-        discoveryClient.registerEventListener(this);
+        SpringContextHandler.addListener(this);
     }
 
     @Override
     public boolean isAvailable() {
-        return discoveryClient.getInstanceRemoteStatus() == InstanceInfo.InstanceStatus.UP;
+        return discoveryClient.isAvailable();
     }
 
     @Override
@@ -116,43 +112,17 @@ public class EurekaRegistry extends FailbackRegistry implements EurekaEventListe
         return key.toString();
     }
 
+    /**
+     * resolve Heartbeat Event
+     *
+     * @param event Heartbeat
+     */
     @Override
-    public void onEvent(EurekaEvent event) {
-        if (event.getClass() == CacheRefreshedEvent.class) {
-            // if need, dynamic refresh registry info
-            notifySubscriber();
-        }
-    }
-
-    private void notifySubscriber() {
-        Map<URL, Set<NotifyListener>> subscribed = getSubscribed();
-        for (Map.Entry<URL, Set<NotifyListener>> subscribe : subscribed.entrySet()) {
-            Set<NotifyListener> listeners = subscribe.getValue();
-            for (NotifyListener nl : listeners) {
-                List<URL> serviceUrls = discoveryClient.query(toKey(subscribe.getKey()));
-                doNotifySubscriber(subscribe.getKey(), nl, serviceUrls);
-            }
-        }
-    }
-
-    private void doNotifySubscriber(final URL url, final NotifyListener nl, List<URL> urls) {
-        // there will be update
-        Map<String, List<URL>> serviceUrls = getNotified().get(url);
-        List<URL> result = new ArrayList<>();
-
-        for (URL u : urls) {
-            if (serviceUrls == null) {
-                result.addAll(urls);
-                break;
-            }
-            for (List<URL> notified : serviceUrls.values()) {
-                if (!notified.contains(u)) {
-                    result.add(u);
-                }
-            }
-        }
-        if (CollectionUtils.isNotEmpty(result)) {
-            notify(url, nl, result);
-        }
+    public void onApplicationEvent(HeartbeatEvent event) {
+        //TODO maybe refresh Invoker url parameter
+        // if provider's setting is modified. For example,
+        // serialization from hession2 changed to fastjson,
+        // or protocol from dubbo changed to http.
+        // there is nothing to do that consumer wanna,
     }
 }

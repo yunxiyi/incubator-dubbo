@@ -16,7 +16,6 @@
  */
 package org.apache.dubbo.demo.consumer;
 
-import org.apache.dubbo.demo.DemoService;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -26,9 +25,9 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.ImportResource;
 
 @SpringBootApplication
+@EnableAutoConfiguration
 @ImportResource(locations = "META-INF/spring/dubbo-demo-consumer.xml")
 @ComponentScan("org.apache.dubbo.demo.consumer.demo")
-@EnableAutoConfiguration
 @EnableEurekaClient
 public class Consumer {
 

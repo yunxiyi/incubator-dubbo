@@ -1,10 +1,9 @@
 package org.apache.dubbo.registry.eureka.configuration;
 
-import com.netflix.appinfo.ApplicationInfoManager;
 import com.netflix.appinfo.HealthCheckHandler;
 import com.netflix.appinfo.InstanceInfo;
 import com.netflix.discovery.DiscoveryClient;
-import com.netflix.discovery.EurekaClientConfig;
+import com.netflix.discovery.EurekaClient;
 import com.netflix.discovery.shared.Application;
 import com.netflix.discovery.shared.transport.EurekaHttpClient;
 import org.apache.dubbo.common.URL;
@@ -25,20 +24,20 @@ import java.util.concurrent.atomic.AtomicReference;
  * @author yunxiyi
  * @date 2018/7/21
  */
-public class DubboDiscoveryClient extends DiscoveryClient {
+public class DubboDiscoveryClient {
 
     private static final Logger log = LoggerFactory.getLogger(DubboDiscoveryClient.class);
 
     private Field eurekaTransportField;
 
+    private DiscoveryClient delegate;
+
     private AtomicReference<EurekaHttpClient> eurekaHttpClient = new AtomicReference<>();
 
-
-    public DubboDiscoveryClient(ApplicationInfoManager applicationInfoManager, EurekaClientConfig config,
-                                DiscoveryClientOptionalArgs args, HealthCheckHandler healthCheckHandler) {
-        super(applicationInfoManager, config, args);
-        registerHealthCheck(healthCheckHandler);
-        eurekaTransportField = ReflectionUtils.findField(DiscoveryClient.class, "eurekaTransport");
+    public DubboDiscoveryClient(EurekaClient eurekaClient, HealthCheckHandler healthCheckHandler) {
+        this.delegate = (DiscoveryClient) eurekaClient;
+        this.delegate.registerHealthCheck(healthCheckHandler);
+        this.eurekaTransportField = ReflectionUtils.findField(DiscoveryClient.class, "eurekaTransport");
         ReflectionUtils.makeAccessible(this.eurekaTransportField);
     }
 
@@ -46,7 +45,7 @@ public class DubboDiscoveryClient extends DiscoveryClient {
     private EurekaHttpClient getEurekaHttpClient() {
         if (this.eurekaHttpClient.get() == null) {
             try {
-                Object eurekaTransport = this.eurekaTransportField.get(this);
+                Object eurekaTransport = this.eurekaTransportField.get(delegate);
                 Field registrationClientField = ReflectionUtils.findField(eurekaTransport.getClass(), "registrationClient");
                 ReflectionUtils.makeAccessible(registrationClientField);
                 this.eurekaHttpClient.compareAndSet(null, (EurekaHttpClient) registrationClientField.get(eurekaTransport));
@@ -74,7 +73,7 @@ public class DubboDiscoveryClient extends DiscoveryClient {
      * @return registered service
      */
     public List<URL> query(String subscribedService) {
-        List<Application> registeredApplications = getApplications().getRegisteredApplications();
+        List<Application> registeredApplications = delegate.getApplications().getRegisteredApplications();
         List<URL> urls = new ArrayList<>();
         for (Application application : registeredApplications) {
             List<InstanceInfo> instances = application.getInstances();
@@ -101,5 +100,13 @@ public class DubboDiscoveryClient extends DiscoveryClient {
             }
         }
         return result;
+    }
+
+    public boolean isAvailable() {
+        return delegate.getInstanceRemoteStatus() == InstanceInfo.InstanceStatus.UP;
+    }
+
+    public void shutdown() {
+        delegate.shutdown();
     }
 }

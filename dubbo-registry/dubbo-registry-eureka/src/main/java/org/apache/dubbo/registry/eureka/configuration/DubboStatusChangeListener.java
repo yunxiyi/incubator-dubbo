@@ -27,9 +27,7 @@ public class DubboStatusChangeListener implements ApplicationInfoManager.StatusC
 
     @Override
     public void notify(StatusChangeEvent statusChangeEvent) {
-        logger.info("this instance status is change, "
-                + statusChangeEvent.getPreviousStatus().name()
-                + " to " + statusChangeEvent.getStatus().name());
+        logger.info(statusChangeEvent.toString());
     }
 
 }
