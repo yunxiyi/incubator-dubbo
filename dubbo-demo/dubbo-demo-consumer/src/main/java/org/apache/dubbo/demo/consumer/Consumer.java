@@ -20,6 +20,7 @@ import org.apache.dubbo.demo.DemoService;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.netflix.eureka.EnableEurekaClient;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.ImportResource;
@@ -28,6 +29,7 @@ import org.springframework.context.annotation.ImportResource;
 @ImportResource(locations = "META-INF/spring/dubbo-demo-consumer.xml")
 @ComponentScan("org.apache.dubbo.demo.consumer.demo")
 @EnableAutoConfiguration
+@EnableEurekaClient
 public class Consumer {
 
     public static void main(String[] args) {

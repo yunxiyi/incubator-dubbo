@@ -84,7 +84,8 @@ public class EurekaRegistry extends FailbackRegistry implements EurekaEventListe
 
     @Override
     protected void doUnregister(URL url) {
-        discoveryClient.shutdown();
+        InstanceInfo instanceInfo = applicationInfoManager.getInfo();
+        instanceInfo.getMetadata().remove(toKey(url));
     }
 
     @Override
@@ -109,7 +110,7 @@ public class EurekaRegistry extends FailbackRegistry implements EurekaEventListe
         StringBuilder key = new StringBuilder();
 
         if (!StringUtils.isBlank(group)) {
-            key.append(group).append(".");
+            key.append(group).append("/");
         }
         key.append(serviceInterface);
         return key.toString();
