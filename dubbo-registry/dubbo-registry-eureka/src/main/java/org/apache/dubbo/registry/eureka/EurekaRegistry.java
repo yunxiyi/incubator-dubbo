@@ -74,8 +74,8 @@ public class EurekaRegistry extends FailbackRegistry implements
         InstanceInfo instanceInfo = applicationInfoManager.getInfo();
         if (Constants.PROVIDER.equals(url.getParameter(Constants.SIDE_KEY))) {
             instanceInfo.getMetadata().put(toKey(url), url.toFullString());
+            discoveryClient.register(instanceInfo);
         }
-        discoveryClient.register(instanceInfo);
     }
 
     @Override
