@@ -21,15 +21,31 @@
        xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
        http://dubbo.apache.org/schema/dubbo http://dubbo.apache.org/schema/dubbo/dubbo.xsd">
 
-    <!-- consumer's application name, used for tracing dependency relationship (not a matching criterion),
-    don't set it same as provider -->
-    <dubbo:application name="demo-consumer"/>
+    <!-- provider's application name, used for tracing dependency relationship -->
+    <dubbo:application name="demo-provider"/>
 
-    <!-- use multicast registry center to discover service -->
-    <dubbo:registry address="multicast://224.5.6.7:1234"/>
+    <!-- use multicast registry center to export service -->
+    <!--<dubbo:registry id="multicast" address="multicast://224.5.6.7:1234"/>-->
 
-    <!-- generate proxy for the remote service, then demoService can be used in the same way as the
-    local regular interface -->
-    <dubbo:reference id="demoService" check="false" interface="org.apache.dubbo.demo.DemoService"/>
+    <!-- use redis registry  center to export service-->
+    <!--<dubbo:registry id="redis" address="redis://127.0.0.1:6379"/>-->
+
+    <!--<dubbo:registry id="eureka" address="eureka://localhost:8761"/>-->
+
+    <!-- use dubbo protocol to export service on port 20880 -->
+    <dubbo:protocol name="dubbo" port="20880"/>
+
+    <dubbo:protocol name="http" port="8099"/>
+
+    <!-- service implementation, as same as regular local bean -->
+    <bean id="demoService" class="org.apache.dubbo.demo.provider.DemoServiceImpl"/>
+
+    <bean id="demoService1" class="org.apache.dubbo.demo.provider.DemoServiceImpl1"/>
+
+    <!-- declare the service interface to be exported -->
+    <dubbo:service group="abc" protocol="http" interface="org.apache.dubbo.demo.DemoService" ref="demoService"/>
+
+    <!--<dubbo:service registry="multicast,redis" group="abc"-->
+                   <!--interfaorg.apache.dubbo.demo.config.DemoServicevice" ref="demoService1"/>-->
 
 </beans>

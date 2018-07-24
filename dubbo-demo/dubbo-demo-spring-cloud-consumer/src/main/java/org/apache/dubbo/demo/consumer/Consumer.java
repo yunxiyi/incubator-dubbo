@@ -16,31 +16,25 @@
  */
 package org.apache.dubbo.demo.consumer;
 
-import org.apache.dubbo.demo.DemoService;
-import org.springframework.context.support.ClassPathXmlApplicationContext;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.netflix.eureka.EnableEurekaClient;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.ImportResource;
 
+@SpringBootApplication
+@EnableAutoConfiguration
+@ComponentScan("org.apache.dubbo.demo.consumer.demo")
+@EnableEurekaClient
 public class Consumer {
 
     public static void main(String[] args) {
         //Prevent to get IPV6 address,this way only work in debug mode
         //But you can pass use -Djava.net.preferIPv4Stack=true,then it work well whether in debug mode or not
         System.setProperty("java.net.preferIPv4Stack", "true");
-        ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext(new String[]{"META-INF/spring/dubbo-demo-consumer.xml"});
-        context.start();
-        DemoService demoService = (DemoService) context.getBean("demoService"); // get remote service proxy
-
-        while (true) {
-            try {
-                Thread.sleep(1000);
-                String hello = demoService.sayHello("world"); // call remote method
-                System.out.println(hello); // get result
-
-            } catch (Throwable throwable) {
-                throwable.printStackTrace();
-            }
-
-
-        }
+        ConfigurableApplicationContext applicationContext = SpringApplication.run(Consumer.class, args);
 
     }
 }

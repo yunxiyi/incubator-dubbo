@@ -16,28 +16,18 @@
  */
 package org.apache.dubbo.demo.provider;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.cloud.netflix.eureka.EnableEurekaClient;
-import org.springframework.context.annotation.ImportResource;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
-@SpringBootApplication
-@EnableAutoConfiguration
-@ImportResource(locations = "META-INF/spring/dubbo-demo-provider.xml")
-@EnableEurekaClient
 public class Provider {
 
     public static void main(String[] args) throws Exception {
         //Prevent to get IPV6 address,this way only work in debug mode
         //But you can pass use -Djava.net.preferIPv4Stack=true,then it work well whether in debug mode or not
         System.setProperty("java.net.preferIPv4Stack", "true");
-//        ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext(new String[]{"META-INF/spring/dubbo-demo-provider.xml"});
-//        context.start();
-//
-//        System.in.read(); // press any key to exit
-        SpringApplication.run(Provider.class, args);
+        ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext(new String[]{"META-INF/spring/dubbo-demo-provider.xml"});
+        context.start();
+
+        System.in.read(); // press any key to exit
     }
 
 }

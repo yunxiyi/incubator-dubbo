@@ -32,6 +32,9 @@
         <module>dubbo-demo-api</module>
         <module>dubbo-demo-provider</module>
         <module>dubbo-demo-consumer</module>
+        <module>dubbo-demo-spring-cloud-provider</module>
+        <module>dubbo-demo-spring-cloud-consumer</module>
+        <module>dubbo-demo-spring-eureka-server</module>
     </modules>
 
     <dependencyManagement>
