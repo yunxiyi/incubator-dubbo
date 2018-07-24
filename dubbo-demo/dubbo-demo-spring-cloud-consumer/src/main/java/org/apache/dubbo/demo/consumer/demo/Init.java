@@ -4,8 +4,6 @@ import javax.annotation.PostConstruct;
 import org.apache.dubbo.config.ApplicationConfig;
 import org.apache.dubbo.config.annotation.Reference;
 import org.apache.dubbo.demo.DemoService;
-import org.apache.dubbo.registry.eureka.configuration.DubboEurekaConfiguration;
-import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -13,7 +11,6 @@ import org.springframework.context.annotation.Configuration;
  * Created by yunxiyi on 2018/7/22.
  */
 @Configuration
-@ImportAutoConfiguration(DubboEurekaConfiguration.class)
 public class Init {
 
     @Reference(check = false, group = "abc", registry = "eureka", protocol = "http")

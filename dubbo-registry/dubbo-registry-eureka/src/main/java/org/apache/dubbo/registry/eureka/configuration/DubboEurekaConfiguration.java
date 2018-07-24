@@ -6,10 +6,13 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import org.apache.dubbo.config.RegistryConfig;
 import org.apache.dubbo.config.spring.beans.factory.annotation.ReferenceAnnotationBeanPostProcessor;
-import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.cloud.commons.util.InetUtils;
 import org.springframework.cloud.netflix.eureka.EurekaClientAutoConfiguration;
 import org.springframework.cloud.netflix.eureka.EurekaClientConfigBean;
 import org.springframework.cloud.netflix.eureka.EurekaInstanceConfigBean;
@@ -22,16 +25,10 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 @ConditionalOnProperty(value = "eureka.client.enabled", matchIfMissing = true)
-@ImportAutoConfiguration({EurekaClientAutoConfiguration.class})
+@AutoConfigureBefore({EurekaClientAutoConfiguration.class})
 public class DubboEurekaConfiguration {
 
     private final static String defaultAddress = "eureka://localhost:8761";
-
-    @Bean
-    @ConditionalOnBean(EurekaInstanceConfigBean.class)
-    public DubboEurekaInstance dubboEurekaInstance(EurekaInstanceConfigBean configBean) {
-        return new DubboEurekaInstance(configBean);
-    }
 
     @Bean
     public DubboEurekaHealthCheckHandler dubboEurekaHealthCheckHandler() {

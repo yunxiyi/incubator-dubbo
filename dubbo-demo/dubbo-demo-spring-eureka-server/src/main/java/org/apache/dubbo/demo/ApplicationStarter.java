@@ -1,11 +1,11 @@
-package tars;
+package org.apache.dubbo.demo;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.netflix.eureka.server.EnableEurekaServer;
 
 /**
- * @author huangrongchao on 2018/7/6.
+ * @author yunxiyi on 2018/7/6.
  * @version 1.0
  */
 @SpringBootApplication
