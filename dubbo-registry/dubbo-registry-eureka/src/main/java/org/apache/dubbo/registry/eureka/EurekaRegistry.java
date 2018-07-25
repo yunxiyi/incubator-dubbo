@@ -60,17 +60,6 @@ public class EurekaRegistry extends FailbackRegistry implements
     }
 
     @Override
-    public boolean isAvailable() {
-        return discoveryClient.isAvailable();
-    }
-
-    @Override
-    public void destroy() {
-        super.destroy();
-        discoveryClient.shutdown();
-    }
-
-    @Override
     protected void doRegister(URL url) {
         if (logger.isDebugEnabled()) {
             logger.debug("eureka registry start : " + url.toFullString());
@@ -156,5 +145,16 @@ public class EurekaRegistry extends FailbackRegistry implements
         // serialization from hession2 changed to fastjson,
         // or protocol from dubbo changed to http.
         // there is nothing to do that consumer wanna,
+    }
+
+    @Override
+    public boolean isAvailable() {
+        return discoveryClient.isAvailable();
+    }
+
+    @Override
+    public void destroy() {
+        super.destroy();
+        discoveryClient.shutdown();
     }
 }
