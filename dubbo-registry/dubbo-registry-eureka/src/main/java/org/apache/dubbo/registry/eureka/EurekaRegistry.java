@@ -18,8 +18,6 @@ package org.apache.dubbo.registry.eureka;
 
 import com.netflix.appinfo.ApplicationInfoManager;
 import com.netflix.appinfo.InstanceInfo;
-import java.util.Arrays;
-import java.util.List;
 import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
@@ -30,8 +28,12 @@ import org.apache.dubbo.registry.NotifyListener;
 import org.apache.dubbo.registry.eureka.configuration.DubboDiscoveryClient;
 import org.apache.dubbo.registry.eureka.configuration.SpringContextHandler;
 import org.apache.dubbo.registry.support.FailbackRegistry;
-import org.springframework.cloud.client.discovery.event.HeartbeatEvent;
+import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationListener;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * EurekaRegistry
@@ -39,13 +41,16 @@ import org.springframework.context.ApplicationListener;
  * @author yunxiyi
  */
 public class EurekaRegistry extends FailbackRegistry implements
-        ApplicationListener<HeartbeatEvent> {
+        ApplicationListener {
 
     private final static Logger logger = LoggerFactory.getLogger(EurekaRegistry.class);
 
     private DubboDiscoveryClient discoveryClient;
 
     private ApplicationInfoManager applicationInfoManager;
+
+
+    public final static String REGISTRY_PREFIX = "registry/";
 
     public EurekaRegistry(URL url) {
         super(url);
@@ -86,12 +91,19 @@ public class EurekaRegistry extends FailbackRegistry implements
 
     @Override
     protected void doSubscribe(final URL url, final NotifyListener listener) {
-        List<URL> urls = discoveryClient.query(toKey(url));
-        if (CollectionUtils.isEmpty(urls)) {
+        List<URL> registryUrls = discoveryClient.query(toKey(url));
+
+        if (CollectionUtils.isEmpty(registryUrls)) {
             return;
         }
+        List<URL> needUrls = new ArrayList<>();
+        String group = url.getParameter(Constants.GROUP_KEY, "*");
+        String protocol = url.getParameter(Constants.PROTOCOL_KEY, "*");
+        for (URL registryUrl : registryUrls) {
+
+        }
         for (NotifyListener nl : Arrays.asList(listener)) {
-            notify(url, nl, urls);
+            notify(url, nl, needUrls);
         }
     }
 
@@ -100,15 +112,28 @@ public class EurekaRegistry extends FailbackRegistry implements
 
     }
 
+    /**
+     * @param url
+     * @return registry/referClass/protocol/group
+     */
     private String toKey(URL url) {
         String serviceInterface = url.getServiceInterface();
-        String group = url.getParameter(Constants.GROUP_KEY);
-        StringBuilder key = new StringBuilder();
+        StringBuilder key = new StringBuilder(REGISTRY_PREFIX);
+        key.append(Constants.PATH_SEPARATOR).append(serviceInterface);
 
-        if (!StringUtils.isBlank(group)) {
-            key.append(group).append("/");
+        String protocol = url.getProtocol();
+        if (Constants.CONSUMER.equals(protocol)) {
+            //query
+            return key.toString();
         }
-        key.append(serviceInterface);
+
+        key.append(protocol);
+
+        String group = url.getParameter(Constants.GROUP_KEY);
+        if (StringUtils.isNotEmpty(group)) {
+            key.append(group).append(Constants.PATH_SEPARATOR);
+        }
+
         return key.toString();
     }
 
@@ -118,7 +143,7 @@ public class EurekaRegistry extends FailbackRegistry implements
      * @param event Heartbeat
      */
     @Override
-    public void onApplicationEvent(HeartbeatEvent event) {
+    public void onApplicationEvent(ApplicationEvent event) {
         //TODO maybe refresh Invoker url parameter
         // if provider's setting is modified. For example,
         // serialization from hession2 changed to fastjson,

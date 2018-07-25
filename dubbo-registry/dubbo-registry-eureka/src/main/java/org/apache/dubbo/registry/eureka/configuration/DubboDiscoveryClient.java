@@ -6,17 +6,20 @@ import com.netflix.discovery.DiscoveryClient;
 import com.netflix.discovery.EurekaClient;
 import com.netflix.discovery.shared.Application;
 import com.netflix.discovery.shared.transport.EurekaHttpClient;
+import com.netflix.discovery.shared.transport.EurekaHttpResponse;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.common.utils.CollectionUtils;
 import org.apache.dubbo.common.utils.StringUtils;
+import org.apache.dubbo.registry.eureka.EurekaRegistry;
 import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -33,6 +36,7 @@ public class DubboDiscoveryClient {
     private DiscoveryClient delegate;
 
     private AtomicReference<EurekaHttpClient> eurekaHttpClient = new AtomicReference<>();
+    private static final int maxRegisterTimes = 3;
 
     public DubboDiscoveryClient(EurekaClient eurekaClient, HealthCheckHandler healthCheckHandler) {
         this.delegate = (DiscoveryClient) eurekaClient;
@@ -58,12 +62,36 @@ public class DubboDiscoveryClient {
 
     /**
      * register export service
+     * make sure eureka server has same info with local
      *
      * @param info register into
      */
     public void register(InstanceInfo info) {
         info.setStatus(InstanceInfo.InstanceStatus.UP);
-        getEurekaHttpClient().register(info);
+        int currRegisterTimes = 0;
+        while (true) {
+            EurekaHttpResponse<InstanceInfo> response = getEurekaHttpClient().getInstance(info.getId());
+            Map<String, String> remoteRegistry = response.getEntity().getMetadata();
+            Map<String, String> localRegistry = info.getMetadata();
+            boolean hasEveryRegistryForRemote = true;
+            String unregisterUrl = null;
+            for (String registryKey : localRegistry.keySet()) {
+                if (registryKey.startsWith(EurekaRegistry.REGISTRY_PREFIX)
+                        && !remoteRegistry.containsKey(registryKey)) {
+                    hasEveryRegistryForRemote = false;
+                    unregisterUrl = localRegistry.get(registryKey);
+                    break;
+                }
+            }
+            if (currRegisterTimes >= maxRegisterTimes
+                    || hasEveryRegistryForRemote) {
+                return;
+            }
+            log.info("register eureka server, currRegisterTimes : " + currRegisterTimes
+                    + ", unregister url : " + unregisterUrl);
+            getEurekaHttpClient().register(info);
+            currRegisterTimes++;
+        }
     }
 
     /**
@@ -94,9 +122,15 @@ public class DubboDiscoveryClient {
             if (info.getStatus() != InstanceInfo.InstanceStatus.UP) {
                 continue;
             }
-            String exportedUrl = info.getMetadata().get(subscribedService);
-            if (StringUtils.isNotEmpty(exportedUrl)) {
-                result.add(URL.valueOf(exportedUrl));
+            for (Map.Entry<String, String> entry : info.getMetadata().entrySet()) {
+                String key = entry.getKey();
+                String value = entry.getValue();
+                if (StringUtils.isBlank(key) || StringUtils.isBlank(value)) {
+                    continue;
+                }
+                if (key.startsWith(subscribedService)) {
+                    result.add(URL.valueOf(entry.getValue()));
+                }
             }
         }
         return result;
