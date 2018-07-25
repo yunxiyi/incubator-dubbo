@@ -43,9 +43,9 @@
     <bean id="demoService1" class="org.apache.dubbo.demo.provider.DemoServiceImpl1"/>
 
     <!-- declare the service interface to be exported -->
-    <dubbo:service group="abc" protocol="http,dubbo" interface="org.apache.dubbo.demo.DemoService" ref="demoService"/>
+    <dubbo:service group="abc" protocol="http" interface="org.apache.dubbo.demo.DemoService" ref="demoService"/>
 
-    <!--<dubbo:service registry="multicast,redis" group="abc"-->
-                   <!--interfaorg.apache.dubbo.demo.config.DemoServicevice" ref="demoService1"/>-->
+    <dubbo:service protocol="dubbo" group="abc1"
+                   interface="org.apache.dubbo.demo.DemoService" ref="demoService1"/>
 
 </beans>

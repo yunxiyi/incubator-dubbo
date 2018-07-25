@@ -33,7 +33,7 @@ public class SpringContextHandler implements ApplicationContextInitializer {
         }
     }
 
-    public static void addListener(ApplicationListener<?> listener) {
+    public static void addApplicationListener(ApplicationListener<?> listener) {
         AbstractApplicationContext context = (AbstractApplicationContext) applicationContext;
         context.addApplicationListener(listener);
     }

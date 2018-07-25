@@ -16,14 +16,13 @@
  */
 package org.apache.dubbo.registry.eureka;
 
-import com.netflix.appinfo.ApplicationInfoManager;
-import com.netflix.appinfo.InstanceInfo;
 import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.common.utils.CollectionUtils;
 import org.apache.dubbo.common.utils.StringUtils;
+import org.apache.dubbo.common.utils.UrlUtils;
 import org.apache.dubbo.registry.NotifyListener;
 import org.apache.dubbo.registry.eureka.configuration.DubboDiscoveryClient;
 import org.apache.dubbo.registry.eureka.configuration.SpringContextHandler;
@@ -47,16 +46,17 @@ public class EurekaRegistry extends FailbackRegistry implements
 
     private DubboDiscoveryClient discoveryClient;
 
-    private ApplicationInfoManager applicationInfoManager;
-
-
-    public final static String REGISTRY_PREFIX = "registry/";
+    private String root;
 
     public EurekaRegistry(URL url) {
         super(url);
         discoveryClient = SpringContextHandler.getBean(DubboDiscoveryClient.class);
-        applicationInfoManager = SpringContextHandler.getBean(ApplicationInfoManager.class);
-        SpringContextHandler.addListener(this);
+        SpringContextHandler.addApplicationListener(this);
+        String group = url.getParameter(Constants.GROUP_KEY, Constants.PATH_SEPARATOR);
+        if (!group.startsWith(Constants.PATH_SEPARATOR)) {
+            group = Constants.PATH_SEPARATOR + group;
+        }
+        root = group;
     }
 
     @Override
@@ -76,34 +76,33 @@ public class EurekaRegistry extends FailbackRegistry implements
             logger.debug("eureka registry start : " + url.toFullString());
         }
 
-        InstanceInfo instanceInfo = applicationInfoManager.getInfo();
         if (Constants.PROVIDER.equals(url.getParameter(Constants.SIDE_KEY))) {
-            instanceInfo.getMetadata().put(toKey(url), url.toFullString());
-            discoveryClient.register(instanceInfo);
+            discoveryClient.register(toKey(url), url.toFullString());
         }
     }
 
     @Override
     protected void doUnregister(URL url) {
-        InstanceInfo instanceInfo = applicationInfoManager.getInfo();
-        instanceInfo.getMetadata().remove(toKey(url));
+        discoveryClient.unregister(toKey(url));
     }
 
     @Override
     protected void doSubscribe(final URL url, final NotifyListener listener) {
-        List<URL> registryUrls = discoveryClient.query(toKey(url));
+        List<URL> registeredUrls = discoveryClient.query(toKey(url));
 
-        if (CollectionUtils.isEmpty(registryUrls)) {
+        if (CollectionUtils.isEmpty(registeredUrls)) {
             return;
         }
-        List<URL> needUrls = new ArrayList<>();
-        String group = url.getParameter(Constants.GROUP_KEY, "*");
-        String protocol = url.getParameter(Constants.PROTOCOL_KEY, "*");
-        for (URL registryUrl : registryUrls) {
 
+        List<URL> needRegisteredUrls = new ArrayList<>();
+        for (URL registeredUrl : registeredUrls) {
+            if (UrlUtils.isMatch(url, registeredUrl)) {
+                needRegisteredUrls.add(registeredUrl);
+            }
         }
+
         for (NotifyListener nl : Arrays.asList(listener)) {
-            notify(url, nl, needUrls);
+            notify(url, nl, needRegisteredUrls);
         }
     }
 
@@ -113,13 +112,14 @@ public class EurekaRegistry extends FailbackRegistry implements
     }
 
     /**
-     * @param url
-     * @return registry/referClass/protocol/group
+     * @param url to convert key
+     * @return
+     *      --if provider return /registryGroup/registry/referClass/protocol/group
+     *      --if consumer return /registryGroup/registry/referClass/
      */
     private String toKey(URL url) {
         String serviceInterface = url.getServiceInterface();
-        StringBuilder key = new StringBuilder(REGISTRY_PREFIX);
-        key.append(Constants.PATH_SEPARATOR).append(serviceInterface);
+        StringBuilder key = new StringBuilder(toRootDir()).append(serviceInterface);
 
         String protocol = url.getProtocol();
         if (Constants.CONSUMER.equals(protocol)) {
@@ -127,7 +127,7 @@ public class EurekaRegistry extends FailbackRegistry implements
             return key.toString();
         }
 
-        key.append(protocol);
+        key.append(protocol).append(Constants.PATH_SEPARATOR);
 
         String group = url.getParameter(Constants.GROUP_KEY);
         if (StringUtils.isNotEmpty(group)) {
@@ -135,6 +135,13 @@ public class EurekaRegistry extends FailbackRegistry implements
         }
 
         return key.toString();
+    }
+
+    private String toRootDir() {
+        if (!root.endsWith(Constants.PATH_SEPARATOR)) {
+            return root + Constants.PATH_SEPARATOR;
+        }
+        return root;
     }
 
     /**

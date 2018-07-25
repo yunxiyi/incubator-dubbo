@@ -641,6 +641,8 @@ public class Constants {
 
     public static final String MULTICAST = "multicast";
 
+    public final static String REGISTRY_PREFIX = "registry/";
+
     /*
      * private Constants(){ }
      */

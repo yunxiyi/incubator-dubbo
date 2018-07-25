@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class Init {
 
-    @Reference(check = false, group = "abc", registry = "eureka")
+    @Reference(check = false, group = "abc1", registry = "eureka", protocol = "http")
     DemoService demoService;
 
     @PostConstruct
