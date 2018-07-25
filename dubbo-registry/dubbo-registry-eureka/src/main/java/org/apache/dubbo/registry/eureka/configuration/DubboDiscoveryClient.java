@@ -40,9 +40,10 @@ public class DubboDiscoveryClient {
 
     private ApplicationInfoManager cacheApplicationInfo;
 
-    private static final int maxRegisterTimes = 3;
+    private static final int maxRetryTimes = 3;
 
-    public DubboDiscoveryClient(EurekaClient eurekaClient, HealthCheckHandler healthCheckHandler) {
+    public DubboDiscoveryClient(EurekaClient eurekaClient,
+                                HealthCheckHandler healthCheckHandler) {
         this.delegate = (DiscoveryClient) eurekaClient;
         this.delegate.registerHealthCheck(healthCheckHandler);
         this.eurekaTransportField = ReflectionUtils.findField(DiscoveryClient.class, "eurekaTransport");
@@ -90,22 +91,12 @@ public class DubboDiscoveryClient {
         info.getMetadata().put(registerKey, registerUrl);
         info.setStatus(InstanceInfo.InstanceStatus.UP);
 
-        for (int currRegisterTimes = 0; currRegisterTimes < maxRegisterTimes; currRegisterTimes++) {
-            InstanceInfo response = queryHttpClient().getInstance(info.getId()).getEntity();
-            Map<String, String> remoteRegistry = response.getMetadata();
-            if (remoteRegistry != null
-                    && response.getMetadata().keySet().contains(registerKey)) {
-
-                String registerLog = "register eureka server"
-                        + " success, currRegisterTimes : "
-                        + currRegisterTimes
-                        + ", has register to url : "
-                        + info.getMetadata().get(registerKey);
-
-                log.info(registerLog);
-                return;
-            }
-            registrationHttpClient().register(info);
+        if (register(info, registerKey)) {
+            String registerLog = "register eureka server"
+                    + " success, has register to url : "
+                    + info.getMetadata().get(registerKey);
+            log.info(registerLog);
+            return;
         }
 
         String registerLog = "register eureka server fail, "
@@ -118,9 +109,47 @@ public class DubboDiscoveryClient {
     public void unregister(String registeredKey) {
         if (getCacheApplicationInfo() != null) {
             InstanceInfo info = getCacheApplicationInfo().getInfo();
-            info.getMetadata().remove(registeredKey);
+            String unregisterUrl = info.getMetadata().remove(registeredKey);
+            boolean unregisterSuccess = unregister(info, registeredKey);
+            if (unregisterSuccess) {
+                String registerLog = "register eureka server success," +
+                        "remove url is : " + unregisterUrl;
+                log.info(registerLog);
+                return;
+            }
+
+            String registerLog = "register eureka server fail,"
+                    + " exceed the max retry times limit, " +
+                    "current register url is : " + unregisterUrl;
+
+            throw new IllegalStateException(registerLog);
+        }
+    }
+
+    private boolean register(InstanceInfo info, String registerKey) {
+        for (int retryTimes = 0; retryTimes < maxRetryTimes; retryTimes++) {
+            InstanceInfo remoteInstance = queryHttpClient().getInstance(info.getId()).getEntity();
+            Map<String, String> remoteRegistry = remoteInstance.getMetadata();
+            if (remoteRegistry != null
+                    && remoteRegistry.keySet().contains(registerKey)) {
+                return true;
+            }
             registrationHttpClient().register(info);
         }
+        return false;
+    }
+
+    private boolean unregister(InstanceInfo info, String registerKey) {
+        for (int retryTimes = 0; retryTimes < maxRetryTimes; retryTimes++) {
+            InstanceInfo remoteInstance = queryHttpClient().getInstance(info.getId()).getEntity();
+            Map<String, String> remoteRegistry = remoteInstance.getMetadata();
+            if (remoteRegistry == null
+                    || !remoteRegistry.keySet().contains(registerKey)) {
+                return true;
+            }
+            registrationHttpClient().register(info);
+        }
+        return false;
     }
 
     public List<URL> query(String subscribedService) {
@@ -129,6 +158,7 @@ public class DubboDiscoveryClient {
         if (CollectionUtils.isEmpty(registeredApplications)) {
             registeredApplications = delegate.getApplications().getRegisteredApplications();
         }
+
         List<URL> urls = new ArrayList<>();
         for (Application application : registeredApplications) {
             List<InstanceInfo> instances = application.getInstances();
