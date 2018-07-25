@@ -155,6 +155,5 @@ public class EurekaRegistry extends FailbackRegistry implements
     @Override
     public void destroy() {
         super.destroy();
-        discoveryClient.shutdown();
     }
 }

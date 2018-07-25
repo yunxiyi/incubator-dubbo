@@ -167,10 +167,6 @@ public class DubboDiscoveryClient {
         return delegate.getInstanceRemoteStatus() == InstanceInfo.InstanceStatus.UP;
     }
 
-    public void shutdown() {
-        delegate.shutdown();
-    }
-
     private ApplicationInfoManager getCacheApplicationInfo() {
         if (cacheApplicationInfo == null) {
             cacheApplicationInfo = SpringContextHandler.getBean(ApplicationInfoManager.class);
