@@ -17,23 +17,20 @@
 package org.apache.dubbo.demo.consumer;
 
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.netflix.eureka.EnableEurekaClient;
-import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
 
 @SpringBootApplication
-@EnableAutoConfiguration
 @ComponentScan("org.apache.dubbo.demo.consumer.demo")
 @EnableEurekaClient
-public class Consumer {
+public class ConsumerApplication {
 
     public static void main(String[] args) {
         //Prevent to get IPV6 address,this way only work in debug mode
         //But you can pass use -Djava.net.preferIPv4Stack=true,then it work well whether in debug mode or not
         System.setProperty("java.net.preferIPv4Stack", "true");
-        ConfigurableApplicationContext applicationContext = SpringApplication.run(Consumer.class, args);
+        SpringApplication.run(ConsumerApplication.class, args);
 
     }
 }
