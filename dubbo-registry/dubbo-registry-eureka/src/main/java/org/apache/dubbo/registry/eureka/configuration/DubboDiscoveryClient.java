@@ -8,6 +8,13 @@ import com.netflix.discovery.EurekaClient;
 import com.netflix.discovery.shared.Application;
 import com.netflix.discovery.shared.Applications;
 import com.netflix.discovery.shared.transport.EurekaHttpClient;
+import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.logger.Logger;
+import org.apache.dubbo.common.logger.LoggerFactory;
+import org.apache.dubbo.common.utils.CollectionUtils;
+import org.apache.dubbo.common.utils.StringUtils;
+import org.springframework.util.ReflectionUtils;
+
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -15,12 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
-import org.apache.dubbo.common.URL;
-import org.apache.dubbo.common.logger.Logger;
-import org.apache.dubbo.common.logger.LoggerFactory;
-import org.apache.dubbo.common.utils.CollectionUtils;
-import org.apache.dubbo.common.utils.StringUtils;
-import org.springframework.util.ReflectionUtils;
 
 /**
  * @author yunxiyi
@@ -176,7 +177,8 @@ public class DubboDiscoveryClient {
             return result;
         }
         for (InstanceInfo info : instances) {
-            if (info.getStatus() != InstanceInfo.InstanceStatus.UP) {
+            if (info.getMetadata() == null || info.getMetadata().isEmpty()
+                    || info.getStatus() != InstanceInfo.InstanceStatus.UP) {
                 continue;
             }
             for (Map.Entry<String, String> entry : info.getMetadata().entrySet()) {
@@ -185,8 +187,12 @@ public class DubboDiscoveryClient {
                 if (StringUtils.isBlank(key) || StringUtils.isBlank(value)) {
                     continue;
                 }
-                if (key.indexOf(subscribedService) > -1) {
-                    result.add(URL.valueOf(entry.getValue()));
+                if (key.startsWith(subscribedService)) {
+                    try {
+                        result.add(URL.valueOf(entry.getValue()));
+                    } catch (Exception e) {
+                        log.error("It's cant't be convert to url " + entry.getValue(), e);
+                    }
                 }
             }
         }
