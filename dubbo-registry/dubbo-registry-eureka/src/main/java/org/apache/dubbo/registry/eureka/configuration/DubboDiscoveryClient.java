@@ -110,15 +110,16 @@ public class DubboDiscoveryClient {
             InstanceInfo info = getCacheApplicationInfo().getInfo();
             String unregisterUrl = info.getMetadata().remove(registeredKey);
             if (unregister(info, registeredKey)) {
-                String registerLog = "register eureka server success," +
-                        "remove url is : " + unregisterUrl;
+                String registerLog = "unregister eureka "
+                        + "server success,remove url is:"
+                        + unregisterUrl;
                 log.info(registerLog);
                 return;
             }
 
-            String registerLog = "register eureka server fail,"
-                    + " exceed the max retry times limit, " +
-                    "current register url is : " + unregisterUrl;
+            String registerLog = "unregister eureka server fail,"
+                    + " unregister exceed the max retry times limit, "
+                    + " current unregister url is : " + unregisterUrl;
 
             throw new IllegalStateException(registerLog);
         }
@@ -189,8 +190,7 @@ public class DubboDiscoveryClient {
         for (Map.Entry<String, String> registered : registeredInfo.entrySet()) {
             if (StringUtils.startsWithIgnoreCase(registered.getKey(), queryKey)) {
                 try {
-                    String exportedUrl = registered.getValue();
-                    exportedUrls.add(URL.valueOf(exportedUrl));
+                    exportedUrls.add(URL.valueOf(registered.getValue()));
                 } catch (Exception e) {
                     log.error("It's cant't be convert to url " + registered.getValue(), e);
                 }
