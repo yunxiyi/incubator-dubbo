@@ -18,8 +18,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
-import org.apache.dubbo.common.utils.CollectionUtils;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.ReflectionUtils;
+import org.springframework.util.StringUtils;
 
 /**
  * @author yunxiyi
@@ -174,8 +175,8 @@ public class DubboDiscoveryClient {
         }
         for (InstanceInfo info : instances) {
             Map<String, String> registeredInfo = info.getMetadata();
-            if (registeredInfo == null || registeredInfo.isEmpty()
-                    || info.getStatus() != InstanceInfo.InstanceStatus.UP) {
+            if (info.getStatus() != InstanceInfo.InstanceStatus.UP
+                    || CollectionUtils.isEmpty(registeredInfo)) {
                 continue;
             }
             result.addAll(getMatchValues(registeredInfo, subscribeQueryKey));
@@ -186,14 +187,13 @@ public class DubboDiscoveryClient {
     private Set<URL> getMatchValues(Map<String, String> registeredInfo, String queryKey) {
         Set<URL> exportedUrls = new HashSet<>();
         for (Map.Entry<String, String> registered : registeredInfo.entrySet()) {
-            if (registered.getKey() == null || !registered.getKey().startsWith(queryKey)) {
-                continue;
-            }
-            try {
-                String exportedUrl = registered.getValue();
-                exportedUrls.add(URL.valueOf(exportedUrl));
-            } catch (Exception e) {
-                log.error("It's cant't be convert to url " + registered.getValue(), e);
+            if (StringUtils.startsWithIgnoreCase(registered.getKey(), queryKey)) {
+                try {
+                    String exportedUrl = registered.getValue();
+                    exportedUrls.add(URL.valueOf(exportedUrl));
+                } catch (Exception e) {
+                    log.error("It's cant't be convert to url " + registered.getValue(), e);
+                }
             }
         }
         return exportedUrls;

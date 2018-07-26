@@ -10,12 +10,8 @@ import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.cloud.commons.util.InetUtils;
 import org.springframework.cloud.netflix.eureka.EurekaClientAutoConfiguration;
 import org.springframework.cloud.netflix.eureka.EurekaClientConfigBean;
-import org.springframework.cloud.netflix.eureka.EurekaInstanceConfigBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -28,7 +24,7 @@ import org.springframework.context.annotation.Configuration;
 @AutoConfigureBefore({EurekaClientAutoConfiguration.class})
 public class DubboEurekaConfiguration {
 
-    private final static String defaultAddress = "eureka://localhost:8761";
+    private static final String DEFAULT_REGISTRY_ADDRESS = "eureka://localhost:8761";
 
     @Bean
     public DubboEurekaHealthCheckHandler dubboEurekaHealthCheckHandler() {
@@ -64,7 +60,7 @@ public class DubboEurekaConfiguration {
             URL eurekaUrl = new URL(defaultZone);
             address = "eureka://" + eurekaUrl.getAuthority();
         } catch (MalformedURLException e) {
-            address = defaultAddress;
+            address = DEFAULT_REGISTRY_ADDRESS;
         }
         return new RegistryConfig(address);
     }

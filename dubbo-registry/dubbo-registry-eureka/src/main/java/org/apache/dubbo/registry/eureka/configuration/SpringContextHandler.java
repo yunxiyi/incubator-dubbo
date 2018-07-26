@@ -6,9 +6,7 @@ import org.apache.dubbo.config.spring.ReferenceBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationContextInitializer;
-import org.springframework.context.ApplicationListener;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.context.support.AbstractApplicationContext;
 
 /**
  * why use this class to get bean ?
@@ -20,9 +18,9 @@ import org.springframework.context.support.AbstractApplicationContext;
  */
 public class SpringContextHandler implements ApplicationContextInitializer {
 
-    private final static Logger LOGGER = LoggerFactory.getLogger(SpringContextHandler.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(SpringContextHandler.class);
 
-    static ApplicationContext applicationContext;
+    private static ApplicationContext applicationContext;
 
     public static <T> T getBean(Class<T> tClass) {
         try {
@@ -31,11 +29,6 @@ public class SpringContextHandler implements ApplicationContextInitializer {
             LOGGER.error(" not found " + tClass.getName() + " bean");
             return null;
         }
-    }
-
-    public static void addApplicationListener(ApplicationListener<?> listener) {
-        AbstractApplicationContext context = (AbstractApplicationContext) applicationContext;
-        context.addApplicationListener(listener);
     }
 
     @Override

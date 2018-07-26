@@ -16,32 +16,26 @@
  */
 package org.apache.dubbo.registry.eureka;
 
+import java.util.Arrays;
+import java.util.List;
 import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.common.utils.CollectionUtils;
-import org.apache.dubbo.common.utils.UrlUtils;
 import org.apache.dubbo.registry.NotifyListener;
 import org.apache.dubbo.registry.eureka.configuration.DubboDiscoveryClient;
 import org.apache.dubbo.registry.eureka.configuration.SpringContextHandler;
 import org.apache.dubbo.registry.support.FailbackRegistry;
-import org.springframework.context.ApplicationEvent;
-import org.springframework.context.ApplicationListener;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * EurekaRegistry
  *
  * @author yunxiyi
  */
-public class EurekaRegistry extends FailbackRegistry implements
-        ApplicationListener {
+public class EurekaRegistry extends FailbackRegistry {
 
-    private final static Logger logger = LoggerFactory.getLogger(EurekaRegistry.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(EurekaRegistry.class);
 
     private DubboDiscoveryClient discoveryClient;
 
@@ -51,19 +45,18 @@ public class EurekaRegistry extends FailbackRegistry implements
         super(url);
         this.root = url.getParameter(Constants.GROUP_KEY, Constants.DEFAULT_DIRECTORY);
         this.discoveryClient = SpringContextHandler.getBean(DubboDiscoveryClient.class);
-        SpringContextHandler.addApplicationListener(this);
     }
 
     @Override
     protected void doRegister(URL url) {
-        if (logger.isDebugEnabled()) {
-            logger.debug("eureka registry start : " + url.toFullString());
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("eureka registry start : " + url.toFullString());
         }
 
         if (Constants.PROVIDER.equals(url.getParameter(Constants.SIDE_KEY))) {
             discoveryClient.register(toRegisterKey(url), url.toFullString());
         } else {
-            logger.warn("consumer don't need to register. url : " + url);
+            LOGGER.warn("consumer don't need to register. url : " + url);
         }
     }
 
@@ -86,7 +79,7 @@ public class EurekaRegistry extends FailbackRegistry implements
 
     @Override
     protected void doUnsubscribe(URL url, NotifyListener listener) {
-
+        LOGGER.info("eureka don't need to cancel subscribe, " + url);
     }
 
     private String toRegisterKey(URL url) {
@@ -117,20 +110,6 @@ public class EurekaRegistry extends FailbackRegistry implements
             root += Constants.PATH_SEPARATOR;
         }
         return root;
-    }
-
-    /**
-     * resolve Heartbeat Event
-     *
-     * @param event Heartbeat
-     */
-    @Override
-    public void onApplicationEvent(ApplicationEvent event) {
-        //TODO maybe refresh Invoker url parameter
-        // if provider's setting is modified. For example,
-        // serialization from hession2 changed to fastjson,
-        // or protocol from dubbo changed to http.
-        // there is nothing to do that consumer wanna,
     }
 
     @Override
