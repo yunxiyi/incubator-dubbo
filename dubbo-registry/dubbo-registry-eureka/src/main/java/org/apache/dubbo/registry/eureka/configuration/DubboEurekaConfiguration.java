@@ -44,6 +44,7 @@ public class DubboEurekaConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(DubboDiscoveryClient.class)
     public DubboDiscoveryClient dubboDiscoveryClient(EurekaClient eurekaClient,
                                                      DubboEurekaHealthCheckHandler healthCheckHandler) {
         return new DubboDiscoveryClient(eurekaClient, healthCheckHandler);

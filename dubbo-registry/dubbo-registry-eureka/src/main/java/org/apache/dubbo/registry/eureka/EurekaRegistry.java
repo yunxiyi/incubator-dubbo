@@ -62,6 +62,8 @@ public class EurekaRegistry extends FailbackRegistry implements
 
         if (Constants.PROVIDER.equals(url.getParameter(Constants.SIDE_KEY))) {
             discoveryClient.register(toRegisterKey(url), url.toFullString());
+        } else {
+            logger.warn("consumer don't need to register. url : " + url);
         }
     }
 
@@ -73,20 +75,12 @@ public class EurekaRegistry extends FailbackRegistry implements
     @Override
     protected void doSubscribe(final URL url, final NotifyListener listener) {
         List<URL> registeredUrls = discoveryClient.query(toQueryKey(url));
-
-        if (CollectionUtils.isEmpty(registeredUrls)) {
-            return;
+        if (Constants.CONSUMER_SIDE.endsWith(url.getParameter(Constants.SIDE_KEY))
+                && CollectionUtils.isEmpty(registeredUrls)) {
+            throw new IllegalStateException("no service can use");
         }
-
-        List<URL> needRegisteredUrls = new ArrayList<>();
-        for (URL registeredUrl : registeredUrls) {
-            if (UrlUtils.isMatch(url, registeredUrl)) {
-                needRegisteredUrls.add(registeredUrl);
-            }
-        }
-
         for (NotifyListener nl : Arrays.asList(listener)) {
-            notify(url, nl, needRegisteredUrls);
+            notify(url, nl, registeredUrls);
         }
     }
 
@@ -95,11 +89,6 @@ public class EurekaRegistry extends FailbackRegistry implements
 
     }
 
-    /**
-     * @param url to convert key
-     * @return --if provider return /registryGroup/registry/referClass/protocol/group
-     * --if consumer return /registryGroup/registry/referClass/
-     */
     private String toRegisterKey(URL url) {
         StringBuilder registerKey = new StringBuilder()
                 .append(toRegistryRootDir())

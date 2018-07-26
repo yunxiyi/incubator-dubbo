@@ -8,13 +8,6 @@ import com.netflix.discovery.EurekaClient;
 import com.netflix.discovery.shared.Application;
 import com.netflix.discovery.shared.Applications;
 import com.netflix.discovery.shared.transport.EurekaHttpClient;
-import org.apache.dubbo.common.URL;
-import org.apache.dubbo.common.logger.Logger;
-import org.apache.dubbo.common.logger.LoggerFactory;
-import org.apache.dubbo.common.utils.CollectionUtils;
-import org.apache.dubbo.common.utils.StringUtils;
-import org.springframework.util.ReflectionUtils;
-
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -22,6 +15,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.logger.Logger;
+import org.apache.dubbo.common.logger.LoggerFactory;
+import org.apache.dubbo.common.utils.CollectionUtils;
+import org.springframework.util.ReflectionUtils;
 
 /**
  * @author yunxiyi
@@ -41,7 +39,7 @@ public class DubboDiscoveryClient {
 
     private ApplicationInfoManager cacheApplicationInfo;
 
-    private static final int maxRetryTimes = 3;
+    private int maxRetryTimes = 3;
 
     public DubboDiscoveryClient(EurekaClient eurekaClient,
                                 HealthCheckHandler healthCheckHandler) {
@@ -50,7 +48,6 @@ public class DubboDiscoveryClient {
         this.eurekaTransportField = ReflectionUtils.findField(DiscoveryClient.class, "eurekaTransport");
         ReflectionUtils.makeAccessible(this.eurekaTransportField);
     }
-
 
     private EurekaHttpClient registrationHttpClient() {
         if (this.registrationHttpClient.get() == null) {
@@ -111,8 +108,7 @@ public class DubboDiscoveryClient {
         if (getCacheApplicationInfo() != null) {
             InstanceInfo info = getCacheApplicationInfo().getInfo();
             String unregisterUrl = info.getMetadata().remove(registeredKey);
-            boolean unregisterSuccess = unregister(info, registeredKey);
-            if (unregisterSuccess) {
+            if (unregister(info, registeredKey)) {
                 String registerLog = "register eureka server success," +
                         "remove url is : " + unregisterUrl;
                 log.info(registerLog);
@@ -153,7 +149,7 @@ public class DubboDiscoveryClient {
         return false;
     }
 
-    public List<URL> query(String subscribedService) {
+    public List<URL> query(String subscribeQueryKey) {
         Applications remoteApplication = queryHttpClient().getApplications().getEntity();
         List<Application> registeredApplications = remoteApplication.getRegisteredApplications();
         if (CollectionUtils.isEmpty(registeredApplications)) {
@@ -166,37 +162,41 @@ public class DubboDiscoveryClient {
             if (CollectionUtils.isEmpty(instances)) {
                 instances = application.getInstancesAsIsFromEureka();
             }
-            urls.addAll(findService(subscribedService, instances));
+            urls.addAll(queryExportedUrls(subscribeQueryKey, instances));
         }
         return urls;
     }
 
-    private Set<URL> findService(String subscribedService, List<InstanceInfo> instances) {
+    private Set<URL> queryExportedUrls(String subscribeQueryKey, List<InstanceInfo> instances) {
         Set<URL> result = new HashSet<>();
         if (CollectionUtils.isEmpty(instances)) {
             return result;
         }
         for (InstanceInfo info : instances) {
-            if (info.getMetadata() == null || info.getMetadata().isEmpty()
+            Map<String, String> registeredInfo = info.getMetadata();
+            if (registeredInfo == null || registeredInfo.isEmpty()
                     || info.getStatus() != InstanceInfo.InstanceStatus.UP) {
                 continue;
             }
-            for (Map.Entry<String, String> entry : info.getMetadata().entrySet()) {
-                String key = entry.getKey();
-                String value = entry.getValue();
-                if (StringUtils.isBlank(key) || StringUtils.isBlank(value)) {
-                    continue;
-                }
-                if (key.startsWith(subscribedService)) {
-                    try {
-                        result.add(URL.valueOf(entry.getValue()));
-                    } catch (Exception e) {
-                        log.error("It's cant't be convert to url " + entry.getValue(), e);
-                    }
-                }
-            }
+            result.addAll(getMatchValues(registeredInfo, subscribeQueryKey));
         }
         return result;
+    }
+
+    private Set<URL> getMatchValues(Map<String, String> registeredInfo, String queryKey) {
+        Set<URL> exportedUrls = new HashSet<>();
+        for (Map.Entry<String, String> registered : registeredInfo.entrySet()) {
+            if (registered.getKey() == null || !registered.getKey().startsWith(queryKey)) {
+                continue;
+            }
+            try {
+                String exportedUrl = registered.getValue();
+                exportedUrls.add(URL.valueOf(exportedUrl));
+            } catch (Exception e) {
+                log.error("It's cant't be convert to url " + registered.getValue(), e);
+            }
+        }
+        return exportedUrls;
     }
 
     public boolean isAvailable() {

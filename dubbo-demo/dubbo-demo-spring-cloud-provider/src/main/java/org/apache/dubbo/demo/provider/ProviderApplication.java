@@ -26,13 +26,13 @@ import org.springframework.context.annotation.ImportResource;
 @EnableAutoConfiguration
 @ImportResource(locations = "META-INF/spring/dubbo-demo-provider.xml")
 @EnableEurekaClient
-public class Provider {
+public class ProviderApplication {
 
     public static void main(String[] args) throws Exception {
         //Prevent to get IPV6 address,this way only work in debug mode
         //But you can pass use -Djava.net.preferIPv4Stack=true,then it work well whether in debug mode or not
         System.setProperty("java.net.preferIPv4Stack", "true");
-        SpringApplication.run(Provider.class, args);
+        SpringApplication.run(ProviderApplication.class, args);
     }
 
 }
