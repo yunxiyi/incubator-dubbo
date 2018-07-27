@@ -38,7 +38,7 @@ public class DubboDiscoveryClient {
 
     private AtomicReference<EurekaHttpClient> queryHttpClient = new AtomicReference<>();
 
-    private ApplicationInfoManager cacheApplicationInfo;
+    private ApplicationInfoManager applicationInfoManager;
 
     private int maxRetryTimes = 3;
 
@@ -47,7 +47,107 @@ public class DubboDiscoveryClient {
         this.delegate = (DiscoveryClient) eurekaClient;
         this.delegate.registerHealthCheck(healthCheckHandler);
         this.eurekaTransportField = ReflectionUtils.findField(DiscoveryClient.class, "eurekaTransport");
+        this.applicationInfoManager = SpringContextHandler.getBean(ApplicationInfoManager.class);
         ReflectionUtils.makeAccessible(this.eurekaTransportField);
+
+    }
+
+    public void register(String registerKey, String registerUrl) {
+        InstanceInfo info = applicationInfoManager.getInfo();
+        info.getMetadata().put(registerKey, registerUrl);
+        info.setStatus(InstanceInfo.InstanceStatus.UP);
+
+        for (int retryTimes = 0; retryTimes < maxRetryTimes; retryTimes++) {
+            InstanceInfo remoteInstance = queryHttpClient().getInstance(info.getId()).getEntity();
+            Map<String, String> remoteRegistry = remoteInstance.getMetadata();
+            if (remoteRegistry != null && remoteRegistry.keySet().contains(registerKey)) {
+                log.info("register eureka server success, register url : " + registerUrl);
+                return;
+            }
+            registrationHttpClient().register(info);
+        }
+
+        throw new IllegalStateException("register eureka server fail, register url is : " + registerUrl);
+    }
+
+    public void unregister(String registeredKey) {
+        if (applicationInfoManager != null) {
+            InstanceInfo info = applicationInfoManager.getInfo();
+            String unregisterUrl = info.getMetadata().remove(registeredKey);
+
+            for (int retryTimes = 0; retryTimes < maxRetryTimes; retryTimes++) {
+                InstanceInfo remoteInstance = queryHttpClient().getInstance(info.getId()).getEntity();
+                Map<String, String> remoteRegistry = remoteInstance.getMetadata();
+                if (remoteRegistry != null && remoteRegistry.keySet().contains(registeredKey)) {
+                    log.info("unregister eureka server success, unregister url is:" + unregisterUrl);
+                    return;
+                }
+                registrationHttpClient().register(info);
+            }
+
+            throw new IllegalStateException("unregister eureka server fail, unregister url is : " + unregisterUrl);
+        }
+    }
+
+    public List<URL> query(String subscribeQueryKey) {
+        Applications remoteApplications = queryHttpClient().getApplications().getEntity();
+        List<Application> registeredApplications = remoteApplications.getRegisteredApplications();
+        if (CollectionUtils.isEmpty(registeredApplications)) {
+            registeredApplications = delegate.getApplications().getRegisteredApplications();
+        }
+
+        Set<URL> registeredUrls = new HashSet<>();
+
+        //if this local instance has not exists remote applications
+        InstanceInfo localInstance = applicationInfoManager.getInfo();
+        if (!isRegisteredApplications(localInstance, remoteApplications)) {
+            registeredUrls.addAll(queryUrlsFromInstance(subscribeQueryKey, localInstance));
+        }
+
+        for (Application application : registeredApplications) {
+            registeredUrls.addAll(queryUrlsFromApplication(subscribeQueryKey, application));
+        }
+
+        return new ArrayList<>(registeredUrls);
+    }
+
+    private Set<URL> queryUrlsFromApplication(String subscribeQueryKey,
+                                              Application application) {
+        Set<URL> registeredApplicationUrls = new HashSet<>();
+        if (application == null || CollectionUtils.isEmpty(application.getInstances())) {
+            return registeredApplicationUrls;
+        }
+        for (InstanceInfo info : application.getInstances()) {
+            if (info != null && info.getStatus() == InstanceInfo.InstanceStatus.UP) {
+                registeredApplicationUrls.addAll(queryUrlsFromInstance(subscribeQueryKey, info));
+            }
+        }
+        return registeredApplicationUrls;
+    }
+
+    private Set<URL> queryUrlsFromInstance(String queryKey, InstanceInfo instance) {
+        Set<URL> registeredInstanceUrls = new HashSet<>();
+        if (CollectionUtils.isEmpty(instance.getMetadata())) {
+            return registeredInstanceUrls;
+        }
+        for (Map.Entry<String, String> registered : instance.getMetadata().entrySet()) {
+            if (StringUtils.startsWithIgnoreCase(registered.getKey(), queryKey)) {
+                try {
+                    registeredInstanceUrls.add(URL.valueOf(registered.getValue()));
+                } catch (Exception e) {
+                    log.error("It's cant't be convert to url " + registered.getValue(), e);
+                }
+            }
+        }
+        return registeredInstanceUrls;
+    }
+
+    private boolean isRegisteredApplications(InstanceInfo instance, Applications remoteApplication) {
+        return null != remoteApplication.getRegisteredApplications(instance.getAppName());
+    }
+
+    public boolean isAvailable() {
+        return delegate.getInstanceRemoteStatus() == InstanceInfo.InstanceStatus.UP;
     }
 
     private EurekaHttpClient registrationHttpClient() {
@@ -78,120 +178,4 @@ public class DubboDiscoveryClient {
         return this.queryHttpClient.get();
     }
 
-    /**
-     * register export service
-     * make sure eureka server has same info with local
-     *
-     * @param registerKey register unique key in current application
-     * @param registerUrl register url
-     */
-    public void register(String registerKey, String registerUrl) {
-        InstanceInfo info = getCacheApplicationInfo().getInfo();
-        info.getMetadata().put(registerKey, registerUrl);
-        info.setStatus(InstanceInfo.InstanceStatus.UP);
-
-        for (int retryTimes = 0; retryTimes < maxRetryTimes; retryTimes++) {
-            InstanceInfo remoteInstance = queryHttpClient().getInstance(info.getId()).getEntity();
-            Map<String, String> remoteRegistry = remoteInstance.getMetadata();
-            if (remoteRegistry != null && remoteRegistry.keySet().contains(registerKey)) {
-                log.info("register eureka server success, register url : " + registerUrl);
-                return;
-            }
-            registrationHttpClient().register(info);
-        }
-
-        throw new IllegalStateException("exceed the max retry times limit, register url is : " + registerUrl);
-    }
-
-    public void unregister(String registeredKey) {
-        if (getCacheApplicationInfo() != null) {
-            InstanceInfo info = getCacheApplicationInfo().getInfo();
-            String unregisterUrl = info.getMetadata().remove(registeredKey);
-
-            for (int retryTimes = 0; retryTimes < maxRetryTimes; retryTimes++) {
-                InstanceInfo remoteInstance = queryHttpClient().getInstance(info.getId()).getEntity();
-                Map<String, String> remoteRegistry = remoteInstance.getMetadata();
-                if (remoteRegistry != null && remoteRegistry.keySet().contains(registeredKey)) {
-                    log.info("unregister eureka server success, unregister url is:" + unregisterUrl);
-                    return;
-                }
-                registrationHttpClient().register(info);
-            }
-
-            throw new IllegalStateException("exceed the max retry times limit, unregister url is : " + unregisterUrl);
-        }
-    }
-
-    public List<URL> query(String subscribeQueryKey) {
-        Applications remoteApplication = queryHttpClient().getApplications().getEntity();
-        List<Application> registeredApplications = remoteApplication.getRegisteredApplications();
-        if (CollectionUtils.isEmpty(registeredApplications)) {
-            registeredApplications = delegate.getApplications().getRegisteredApplications();
-        }
-
-        Application localApplication = getLocalApplication(remoteApplication);
-        if (localApplication != null) {
-            registeredApplications.add(localApplication);
-        }
-
-        Set<URL> urls = new HashSet<>();
-        for (Application application : registeredApplications) {
-            urls.addAll(queryUrlsFromApplication(subscribeQueryKey, application));
-        }
-
-        return new ArrayList<>(urls);
-    }
-
-    private Set<URL> queryUrlsFromApplication(String subscribeQueryKey,
-                                              Application application) {
-        Set<URL> result = new HashSet<>();
-        if (application == null || CollectionUtils.isEmpty(application.getInstances())) {
-            return result;
-        }
-        for (InstanceInfo info : application.getInstances()) {
-            if (info != null && info.getStatus() == InstanceInfo.InstanceStatus.UP) {
-                result.addAll(queryUrlsFromInstance(subscribeQueryKey, info));
-            }
-        }
-        return result;
-    }
-
-    private Set<URL> queryUrlsFromInstance(String queryKey, InstanceInfo instance) {
-        Set<URL> exportedUrls = new HashSet<>();
-        if (CollectionUtils.isEmpty(instance.getMetadata())) {
-            return exportedUrls;
-        }
-        for (Map.Entry<String, String> registered : instance.getMetadata().entrySet()) {
-            if (StringUtils.startsWithIgnoreCase(registered.getKey(), queryKey)) {
-                try {
-                    exportedUrls.add(URL.valueOf(registered.getValue()));
-                } catch (Exception e) {
-                    log.error("It's cant't be convert to url " + registered.getValue(), e);
-                }
-            }
-        }
-        return exportedUrls;
-    }
-
-    private Application getLocalApplication(Applications remoteApplication) {
-        // local registry info
-        InstanceInfo currentInstance = getCacheApplicationInfo().getInfo();
-        Application currentApplication = remoteApplication.getRegisteredApplications(currentInstance.getAppName());
-        if (currentApplication == null) {
-            // not sync to registered applications
-            return queryHttpClient().getApplication(currentInstance.getAppName()).getEntity();
-        }
-        return null;
-    }
-
-    public boolean isAvailable() {
-        return delegate.getInstanceRemoteStatus() == InstanceInfo.InstanceStatus.UP;
-    }
-
-    private ApplicationInfoManager getCacheApplicationInfo() {
-        if (cacheApplicationInfo == null) {
-            cacheApplicationInfo = SpringContextHandler.getBean(ApplicationInfoManager.class);
-        }
-        return cacheApplicationInfo;
-    }
 }

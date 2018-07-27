@@ -6,7 +6,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import org.apache.dubbo.config.RegistryConfig;
 import org.apache.dubbo.config.spring.beans.factory.annotation.ReferenceAnnotationBeanPostProcessor;
-import org.springframework.boot.autoconfigure.AutoConfigureBefore;
+import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -21,7 +21,7 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 @ConditionalOnProperty(value = "eureka.client.enabled", matchIfMissing = true)
-@AutoConfigureBefore({EurekaClientAutoConfiguration.class})
+@AutoConfigureAfter({EurekaClientAutoConfiguration.class})
 public class DubboEurekaConfiguration {
 
     private static final String DEFAULT_REGISTRY_ADDRESS = "eureka://localhost:8761";
