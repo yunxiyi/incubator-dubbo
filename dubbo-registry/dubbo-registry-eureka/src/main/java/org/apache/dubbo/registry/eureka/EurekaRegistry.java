@@ -68,8 +68,7 @@ public class EurekaRegistry extends FailbackRegistry {
     @Override
     protected void doSubscribe(final URL url, final NotifyListener listener) {
         List<URL> registeredUrls = discoveryClient.query(toQueryKey(url));
-        if (Constants.CONSUMER_SIDE.endsWith(url.getParameter(Constants.SIDE_KEY))
-                && CollectionUtils.isEmpty(registeredUrls)) {
+        if (CollectionUtils.isEmpty(registeredUrls)) {
             throw new IllegalStateException("no service can use");
         }
         for (NotifyListener nl : Arrays.asList(listener)) {
