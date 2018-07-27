@@ -82,23 +82,14 @@ public class EurekaRegistry extends FailbackRegistry {
     }
 
     private String toRegisterKey(URL url) {
-        StringBuilder registerKey = new StringBuilder()
-                .append(toRegistryRootDir())
-                .append(url.getServiceInterface())
-                .append(Constants.PATH_SEPARATOR)
-                .append(url.hashCode());
-        return registerKey.toString();
+        return toQueryKey(url) + url.hashCode();
     }
 
     private String toQueryKey(URL url) {
         if (Constants.ANY_VALUE.equals(url.getServiceInterface())) {
             return toRegistryRootDir();
         }
-        StringBuilder queryKey = new StringBuilder()
-                .append(toRegistryRootDir())
-                .append(url.getServiceInterface())
-                .append(Constants.PATH_SEPARATOR);
-        return queryKey.toString();
+        return toRegistryRootDir() + url.getServiceInterface() + Constants.PATH_SEPARATOR;
     }
 
     private String toRegistryRootDir() {
