@@ -71,8 +71,8 @@ public class EurekaRegistry extends FailbackRegistry {
         if (CollectionUtils.isEmpty(registeredUrls)) {
             throw new IllegalStateException("no service can use");
         }
-        for (NotifyListener nl : Arrays.asList(listener)) {
-            notify(url, nl, registeredUrls);
+        for (NotifyListener subNotifyListener : Arrays.asList(listener)) {
+            notify(url, subNotifyListener, registeredUrls);
         }
     }
 
