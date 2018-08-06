@@ -1,1 +1,5 @@
+<<<<<<< HEAD
 http=org.apache.dubbo.rpc.protocol.http.HttpProtocol
+=======
+http=org.apache.dubbo.rpc.protocol.http.HttpProtocol
+>>>>>>> pr/3
