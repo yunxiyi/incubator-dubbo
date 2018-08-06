@@ -78,7 +78,7 @@ public class DubboDiscoveryClient {
             for (int retryTimes = 0; retryTimes < maxRetryTimes; retryTimes++) {
                 InstanceInfo remoteInstance = queryHttpClient().getInstance(info.getId()).getEntity();
                 Map<String, String> registeredInfo = remoteInstance.getMetadata();
-                if (registeredInfo != null && registeredInfo.keySet().contains(registeredKey)) {
+                if (registeredInfo != null && !registeredInfo.keySet().contains(registeredKey)) {
                     log.info("unregister eureka server success, unregister url is:" + unregisterUrl);
                     return;
                 }
